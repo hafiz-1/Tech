@@ -1,0 +1,479 @@
+// =====================================================================
+// B2C Electronics Ecommerce Store - Prisma schema (PostgreSQL)
+// Source: BRD v1.1, full scope.
+// Rules Prisma cannot express (CHECK constraints, partial unique indexes,
+// FIFO functions, availability view) live in extras.sql - apply it in the
+// first migration (see setup notes).
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------------------------------------------------
+enum UserRole {
+  customer
+  super_admin
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  unverified
+  verified
+  suspended
+
+  @@map("user_status")
+}
+
+enum TokenType {
+  email_verification
+  password_reset
+
+  @@map("token_type")
+}
+
+enum PoStatus {
+  draft
+  received
+  cancelled
+
+  @@map("po_status")
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  out_for_delivery
+  delivered
+  cancelled
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+  partially_refunded
+
+  @@map("payment_status")
+}
+
+enum ReservationStatus {
+  active
+  converted
+  released
+  expired
+
+  @@map("reservation_status")
+}
+
+enum ReturnReason {
+  shipping_damage
+  technical_issue
+  manufacturing_defect
+
+  @@map("return_reason")
+}
+
+enum ReturnStatus {
+  requested
+  under_review
+  approved
+  rejected
+  item_received
+  inspected
+  refunded
+  replaced
+  closed
+
+  @@map("return_status")
+}
+
+enum ReturnResolution {
+  refund
+  replacement
+
+  @@map("return_resolution")
+}
+
+enum AdjustmentReason {
+  damaged_return
+  lost
+  stolen
+  miscount
+  found
+
+  @@map("adjustment_reason")
+}
+
+// ---------- Users & authentication -----------------------------------
+model User {
+  id              Int        @id @default(autoincrement())
+  name            String
+  email           String     @unique // always store lowercase
+  phone           String?
+  passwordHash    String     @map("password_hash")
+  role            UserRole   @default(customer)
+  status          UserStatus @default(unverified)
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  authTokens       AuthToken[]
+  cart             Cart?
+  orders           Order[]
+  returnRequests   ReturnRequest[]
+  reservations     StockReservation[]
+  stockAdjustments StockAdjustment[]
+
+  @@map("users")
+}
+
+model AuthToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      TokenType
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, type])
+  @@map("auth_tokens")
+}
+
+// ---------- Catalog --------------------------------------------------
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id        Int       @id @default(autoincrement())
+  name      String
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id             Int       @id @default(autoincrement())
+  categoryId     Int       @map("category_id")
+  brandId        Int       @map("brand_id")
+  name           String
+  description    String?
+  images         Json      @default("[]")
+  specifications Json      @default("{}")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category Category         @relation(fields: [categoryId], references: [id])
+  brand    Brand            @relation(fields: [brandId], references: [id])
+  variants ProductVariant[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id             Int       @id @default(autoincrement())
+  productId      Int       @map("product_id")
+  sku            String    @unique
+  specifications Json      @default("{}")
+  sellingPrice   Decimal   @map("selling_price") @db.Decimal(12, 2)
+  isActive       Boolean   @default(true) @map("is_active")
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product       Product            @relation(fields: [productId], references: [id])
+  batches       InventoryBatch[]
+  purchaseItems PurchaseItem[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reservations  StockReservation[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// ---------- Suppliers & purchasing -----------------------------------
+model Vendor {
+  id            Int       @id @default(autoincrement())
+  companyName   String    @map("company_name")
+  contactPerson String?   @map("contact_person")
+  phone         String?
+  email         String?
+  address       String?
+  licenseNumber String?   @map("license_number")
+  isActive      Boolean   @default(true) @map("is_active")
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseOrders PurchaseOrder[]
+  batches        InventoryBatch[]
+
+  @@map("vendors")
+}
+
+model PurchaseOrder {
+  id         Int       @id @default(autoincrement())
+  vendorId   Int       @map("vendor_id")
+  status     PoStatus  @default(draft)
+  receivedAt DateTime? @map("received_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vendor  Vendor           @relation(fields: [vendorId], references: [id])
+  items   PurchaseItem[]
+  batches InventoryBatch[]
+
+  @@index([vendorId])
+  @@map("purchase_orders")
+}
+
+model PurchaseItem {
+  id              Int      @id @default(autoincrement())
+  purchaseOrderId Int      @map("purchase_order_id")
+  variantId       Int      @map("variant_id")
+  quantity        Int
+  purchasePrice   Decimal  @map("purchase_price") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id])
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@map("purchase_items")
+}
+
+// ---------- Inventory (batch level, FIFO) ----------------------------
+model InventoryBatch {
+  id                Int      @id @default(autoincrement())
+  variantId         Int      @map("variant_id")
+  vendorId          Int      @map("vendor_id")
+  purchaseOrderId   Int      @map("purchase_order_id")
+  batchReference    String?  @map("batch_reference")
+  purchasePrice     Decimal  @map("purchase_price") @db.Decimal(12, 2) // never overwritten
+  quantityReceived  Int      @map("quantity_received")
+  quantityRemaining Int      @map("quantity_remaining")
+  receivedAt        DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  variant       ProductVariant        @relation(fields: [variantId], references: [id])
+  vendor        Vendor                @relation(fields: [vendorId], references: [id])
+  purchaseOrder PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  allocations   InventoryAllocation[]
+  adjustments   StockAdjustment[]
+
+  @@index([variantId])
+  @@map("inventory_batches")
+}
+
+// ---------- Cart -----------------------------------------------------
+model Cart {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int      @map("cart_id")
+  variantId Int      @map("variant_id")
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([cartId, variantId])
+  @@map("cart_items")
+}
+
+// ---------- Orders ---------------------------------------------------
+model Order {
+  id             Int         @id @default(autoincrement())
+  userId         Int         @map("user_id")
+  status         OrderStatus @default(pending)
+  recipientName  String      @map("recipient_name")
+  contactNumber  String      @map("contact_number")
+  address        String
+  city           String
+  postalCode     String?     @map("postal_code")
+  itemsSubtotal  Decimal     @map("items_subtotal") @db.Decimal(12, 2)
+  shippingFee    Decimal     @default(0) @map("shipping_fee") @db.Decimal(12, 2)
+  total          Decimal     @db.Decimal(12, 2)
+  courierName    String?     @map("courier_name")
+  trackingNumber String?     @map("tracking_number")
+  deliveredAt    DateTime?   @map("delivered_at") @db.Timestamptz(6) // starts the 7-day return window
+  cancelledAt    DateTime?   @map("cancelled_at") @db.Timestamptz(6)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user           User               @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  payments       Payment[]
+  returnRequests ReturnRequest[]
+  reservations   StockReservation[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int      @map("order_id")
+  variantId   Int      @map("variant_id")
+  productName String   @map("product_name") // snapshot
+  sku         String // snapshot
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2) // snapshot
+  quantity    Int
+  subtotal    Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order          Order                 @relation(fields: [orderId], references: [id])
+  variant        ProductVariant        @relation(fields: [variantId], references: [id])
+  allocations    InventoryAllocation[]
+  returnRequests ReturnRequest[]
+
+  @@index([orderId])
+  @@index([variantId])
+  @@map("order_items")
+}
+
+model InventoryAllocation {
+  id               Int      @id @default(autoincrement())
+  orderItemId      Int      @map("order_item_id")
+  batchId          Int      @map("batch_id")
+  quantity         Int
+  restoredQuantity Int      @default(0) @map("restored_quantity")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  orderItem OrderItem      @relation(fields: [orderItemId], references: [id])
+  batch     InventoryBatch @relation(fields: [batchId], references: [id])
+
+  @@index([orderItemId])
+  @@index([batchId])
+  @@map("inventory_allocations")
+}
+
+model StockReservation {
+  id        Int               @id @default(autoincrement())
+  userId    Int               @map("user_id")
+  orderId   Int?              @map("order_id")
+  variantId Int               @map("variant_id")
+  quantity  Int
+  status    ReservationStatus @default(active)
+  expiresAt DateTime          @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User           @relation(fields: [userId], references: [id])
+  order   Order?         @relation(fields: [orderId], references: [id])
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([variantId, status])
+  @@map("stock_reservations")
+}
+
+// ---------- Payments (no card data stored) ---------------------------
+model Payment {
+  id          Int           @id @default(autoincrement())
+  orderId     Int           @map("order_id")
+  provider    String?
+  providerRef String?       @map("provider_ref")
+  amount      Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(pending)
+  paidAt      DateTime?     @map("paid_at") @db.Timestamptz(6)
+  refundedAt  DateTime?     @map("refunded_at") @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ---------- Returns --------------------------------------------------
+model ReturnRequest {
+  id           Int               @id @default(autoincrement())
+  orderId      Int               @map("order_id")
+  orderItemId  Int               @map("order_item_id")
+  userId       Int               @map("user_id")
+  reason       ReturnReason
+  description  String
+  media        Json              @default("[]")
+  status       ReturnStatus      @default(requested)
+  resolution   ReturnResolution?
+  adminNote    String?           @map("admin_note")
+  inspectionOk Boolean?          @map("inspection_ok") // true: back to stock, false: damaged
+  reviewedAt   DateTime?         @map("reviewed_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  order            Order             @relation(fields: [orderId], references: [id])
+  orderItem        OrderItem         @relation(fields: [orderItemId], references: [id])
+  user             User              @relation(fields: [userId], references: [id])
+  stockAdjustments StockAdjustment[]
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@map("return_requests")
+}
+
+model StockAdjustment {
+  id              Int              @id @default(autoincrement())
+  batchId         Int              @map("batch_id")
+  quantityChange  Int              @map("quantity_change")
+  reason          AdjustmentReason
+  returnRequestId Int?             @map("return_request_id")
+  note            String?
+  createdById     Int              @map("created_by")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  batch         InventoryBatch @relation(fields: [batchId], references: [id])
+  returnRequest ReturnRequest? @relation(fields: [returnRequestId], references: [id])
+  createdBy     User           @relation(fields: [createdById], references: [id])
+
+  @@index([batchId])
+  @@map("stock_adjustments")
+}
