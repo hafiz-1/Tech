@@ -176,6 +176,28 @@ async function invalidateVerificationToken(tokenHash) {
 }
 
 
+// Find a user by email, including sensitive fields like passwordHash and tokenVersion.
+
+function findUserByEmail(email) {
+    return prisma.user.findUnique({
+        where: {
+            email
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            passwordHash: true,
+            role: true,
+            status: true,
+            emailVerifiedAt: true,
+            tokenVersion: true
+        }
+    });
+}
+
+
 
 module.exports = {
     createCustomerWithVerificationToken,
@@ -183,5 +205,6 @@ module.exports = {
     consumeTokenAndVerifyCustomer,
     findUnverifiedCustomerByEmail,
     createResendVerificationToken,
-    invalidateVerificationToken
+    invalidateVerificationToken,
+    findUserByEmail
 };

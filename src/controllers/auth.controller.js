@@ -1,5 +1,5 @@
 
-const { registerCustomer, verifyCustomerEmail, resendVerificationOtp   } = require("../services/auth.service");
+const { registerCustomer, verifyCustomerEmail, resendVerificationOtp, loginCustomer } = require("../services/auth.service");
 
 async function register(req, res, next) {
     try {
@@ -103,5 +103,41 @@ async function resendOtp(req, res, next) {
     }
 }
 
+// Login function 
 
-module.exports = { register, verifyEmail, resendOtp };
+async function login(req, res, next) {
+    try {
+        const { email, password } = req.body;
+
+        if (
+            typeof email !== "string" ||
+            typeof password !== "string" ||
+            !email.trim() ||
+            !password
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
+            });
+        }
+
+        const customer = await loginCustomer({ email, password });
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            data: {
+                id: customer.id,
+                name: customer.name,
+                email: customer.email,
+                phone: customer.phone,
+                role: customer.role,
+                status: customer.status
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+module.exports = { register, verifyEmail, resendOtp, login };

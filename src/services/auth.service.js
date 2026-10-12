@@ -73,6 +73,57 @@ async function registerCustomer({ name, email, phone, password }) {
 }
 
 
+//login customer
+
+async function loginCustomer({ email, password }) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await userQueries.findUserByEmail(normalizedEmail);
+
+    // Use the same error for an unknown email and wrong password.
+    const invalidCredentials = new Error("Invalid email or password");
+    invalidCredentials.statusCode = 401;
+
+    if (!user || user.role !== "customer") {
+        throw invalidCredentials;
+    }
+
+    const passwordMatches = await bcrypt.compare(
+        password,
+        user.passwordHash
+    );
+
+    if (!passwordMatches) {
+        throw invalidCredentials;
+    }
+
+    if (user.status === "unverified") {
+        const error = new Error("Please verify your email before logging in");
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (user.status === "suspended") {
+        const error = new Error("Your account is suspended");
+        error.statusCode = 403;
+        throw error;
+    }
+
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        emailVerifiedAt: user.emailVerifiedAt,
+        tokenVersion: user.tokenVersion
+    };
+}
+
+
+
+
 async function verifyCustomerEmail({ email, otp }) {
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -162,5 +213,6 @@ async function resendVerificationOtp({ email }) {
 module.exports = {
     registerCustomer,
     verifyCustomerEmail,
-    resendVerificationOtp
+    resendVerificationOtp,
+    loginCustomer
 };
