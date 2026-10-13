@@ -215,6 +215,7 @@ async function findAuthUserById(userId) {
 // Create a new login session and its initial refresh token atomically.
 async function createAuthSession({
     userId,
+    tokenVersion,
     refreshTokenHash,
     expiresAt,
     absoluteExpiresAt,
@@ -224,6 +225,7 @@ async function createAuthSession({
         const session = await tx.authSession.create({
             data: {
                 userId,
+                tokenVersion,
                 expiresAt,
                 absoluteExpiresAt,
                 userAgent: userAgent || null
@@ -307,18 +309,17 @@ async function revokeAuthSession({ sessionId, reason }) {
     });
 }
 
+
 // Atomically consume a refresh token and create its replacement.
-// A token can be consumed only once, even if refresh requests race.
 async function rotateRefreshToken({
     oldTokenId,
     sessionId,
-    newTokenHash,
-    newExpiresAt
+    newTokenHash
 }) {
     return prisma.$transaction(async (tx) => {
         const now = new Date();
 
-        // Lock the session row so concurrent refresh requests serialize.
+        // Serialize refresh attempts for this session.
         await tx.$queryRaw`
             SELECT id
             FROM auth_sessions
@@ -330,11 +331,14 @@ async function rotateRefreshToken({
             where: { id: sessionId },
             select: {
                 id: true,
+                userId: true,
+                tokenVersion: true,
                 expiresAt: true,
                 absoluteExpiresAt: true,
                 revokedAt: true,
                 user: {
                     select: {
+                        id: true,
                         status: true,
                         tokenVersion: true
                     }
@@ -342,34 +346,38 @@ async function rotateRefreshToken({
             }
         });
 
+        const oldToken = await tx.refreshToken.findUnique({
+            where: { id: oldTokenId },
+            select: {
+                id: true,
+                sessionId: true,
+                expiresAt: true,
+                usedAt: true,
+                revokedAt: true
+            }
+        });
+
         if (
             !session ||
+            !oldToken ||
+            oldToken.sessionId !== sessionId ||
             session.revokedAt ||
             session.expiresAt <= now ||
             session.absoluteExpiresAt <= now ||
-            session.user.status !== "verified"
+            session.user.status !== "verified" ||
+            session.tokenVersion !== session.user.tokenVersion
         ) {
             return { status: "invalid_session" };
         }
 
-        const consumed = await tx.refreshToken.updateMany({
-            where: {
-                id: oldTokenId,
-                sessionId,
-                usedAt: null,
-                revokedAt: null,
-                expiresAt: { gt: now }
-            },
-            data: { usedAt: now }
-        });
+        if (oldToken.revokedAt) {
+            return { status: "invalid_token" };
+        }
 
-        if (consumed.count !== 1) {
-            // A previously consumed token may indicate reuse.
-            await tx.authSession.updateMany({
-                where: {
-                    id: sessionId,
-                    revokedAt: null
-                },
+        // Reuse of a previously consumed token revokes this session.
+        if (oldToken.usedAt) {
+            await tx.authSession.update({
+                where: { id: sessionId },
                 data: {
                     revokedAt: now,
                     revocationReason: "refresh_token_reuse"
@@ -387,6 +395,25 @@ async function rotateRefreshToken({
             return { status: "reuse_detected" };
         }
 
+        if (oldToken.expiresAt <= now) {
+            return { status: "invalid_token" };
+        }
+
+        const consumed = await tx.refreshToken.updateMany({
+            where: {
+                id: oldTokenId,
+                sessionId,
+                usedAt: null,
+                revokedAt: null,
+                expiresAt: { gt: now }
+            },
+            data: { usedAt: now }
+        });
+
+        if (consumed.count !== 1) {
+            return { status: "invalid_token" };
+        }
+
         const expiresAt = new Date(
             Math.min(
                 now.getTime() + 7 * 24 * 60 * 60 * 1000,
@@ -398,7 +425,7 @@ async function rotateRefreshToken({
             data: {
                 sessionId,
                 tokenHash: newTokenHash,
-                expiresAt: expiresAt
+                expiresAt
             }
         });
 
@@ -412,11 +439,13 @@ async function rotateRefreshToken({
 
         return {
             status: "rotated",
-            expiresAt,
-            tokenVersion: session.user.tokenVersion
+            userId: session.user.id,
+            tokenVersion: session.user.tokenVersion,
+            expiresAt
         };
     });
 }
+
 
 module.exports = {
     createCustomerWithVerificationToken,

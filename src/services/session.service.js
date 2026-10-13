@@ -29,6 +29,7 @@ async function createLoginSession(user, userAgent) {
     // Create the session and initial refresh-token record.
     const session = await userQueries.createAuthSession({
         userId: user.id,
+        tokenVersion: user.tokenVersion,
         refreshTokenHash,
         expiresAt,
         absoluteExpiresAt,
@@ -52,6 +53,63 @@ async function createLoginSession(user, userAgent) {
     };
 }
 
+async function refreshLoginSession(refreshToken) {
+    if (!refreshToken || typeof refreshToken !== "string") {
+        const error = new Error("Invalid or expired refresh token");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const tokenHash = hashRefreshToken(refreshToken);
+
+    const storedToken = await userQueries.findRefreshToken(tokenHash);
+
+    if (!storedToken) {
+        const error = new Error("Invalid or expired refresh token");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const newRefreshToken = generateRefreshToken();
+    const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
+
+    const result = await userQueries.rotateRefreshToken({
+        oldTokenId: storedToken.id,
+        sessionId: storedToken.sessionId,
+        newTokenHash: newRefreshTokenHash
+    });
+
+    if (result.status !== "rotated") {
+        const error = new Error("Invalid or expired refresh token");
+        error.statusCode = 401;
+        throw error;
+    }
+
+    const accessToken = generateAccessToken(
+        {
+            id: result.userId,
+            tokenVersion: result.tokenVersion
+        },
+        storedToken.sessionId
+    );
+
+    return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresAt: result.expiresAt
+    };
+}
+
+// Revoke a session and its associated refresh tokens.
+async function logoutSession(sessionId) {
+    await userQueries.revokeAuthSession({
+        sessionId,
+        reason: "logout"
+    });
+}
+
 module.exports = {
-    createLoginSession
+    createLoginSession,
+    refreshLoginSession,
+    logoutSession
 };

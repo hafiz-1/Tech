@@ -1,5 +1,7 @@
 const express = require("express");
-const { register, verifyEmail, resendOtp, login, logout } = require("../controllers/auth.controller");
+const {
+    register, verifyEmail, resendOtp, login, logout, refresh
+} = require("../controllers/auth.controller");
 const { requireAuth } = require("../middleware/auth.middleware");
 const router = express.Router();
 
@@ -20,5 +22,7 @@ router.get("/test-protected", requireAuth, (req, res) => {
 });
 
 router.post("/logout", requireAuth, logout);
+
+router.post("/refresh", refresh);
 
 module.exports = router;

@@ -187,6 +187,7 @@ model AuthToken {
 model AuthSession {
   id                 Int       @id @default(autoincrement())
   userId             Int       @map("user_id")
+  tokenVersion Int @map("token_version")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lastSeenAt         DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
   expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
