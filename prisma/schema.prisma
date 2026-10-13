@@ -149,12 +149,13 @@ model User {
   role            UserRole   @default(customer)
   status          UserStatus @default(unverified)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
-  tokenVersion    Int        @default(0) @map("token_version") // bump on logout, password change, suspension: invalidates all sessions
+  tokenVersion Int @default(0) @map("token_version") // Increment for account-wide invalidation, such as password change or suspension.
   deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz(6)
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   authTokens       AuthToken[]
+  sessions AuthSession[]
   cart             Cart?
   orders           Order[]            @relation("OrderCustomer")
   cancelledOrders  Order[]            @relation("OrderCancelledBy")
@@ -181,6 +182,43 @@ model AuthToken {
   @@index([userId, type])
   @@map("auth_tokens")
 }
+
+
+model AuthSession {
+  id                 Int       @id @default(autoincrement())
+  userId             Int       @map("user_id")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt         DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
+  absoluteExpiresAt  DateTime  @map("absolute_expires_at") @db.Timestamptz(6)
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revocationReason   String?   @map("revocation_reason")
+  userAgent          String?   @map("user_agent")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
+}
+
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  sessionId Int       @map("session_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, usedAt])
+  @@map("auth_refresh_tokens")
+}
+
+
 
 // ---------- Catalog --------------------------------------------------
 model Category {

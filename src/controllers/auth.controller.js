@@ -155,8 +155,29 @@ async function login(req, res, next) {
     }
 }
 
+//  logout function
+
+async function logout(req, res, next) {
+    try {
+        res.clearCookie("auth_token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/"
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Logout successful"
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+
 
 module.exports = {
     register, verifyEmail,
-    resendOtp, login
+    resendOtp, login, logout
 };

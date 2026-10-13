@@ -1,15 +1,15 @@
-
 const jwt = require("jsonwebtoken");
 
-function generateAuthToken(user) {
+function generateAccessToken(user, sessionId) {
     return jwt.sign(
         {
-            tokenVersion: user.tokenVersion
+            tokenVersion: user.tokenVersion,
+            sid: sessionId
         },
         process.env.JWT_SECRET,
         {
             subject: String(user.id),
-            expiresIn: "1h",
+            expiresIn: "15m",
             issuer: "techcart-api",
             audience: "techcart-client"
         }
@@ -17,5 +17,5 @@ function generateAuthToken(user) {
 }
 
 module.exports = {
-    generateAuthToken
+    generateAccessToken
 };

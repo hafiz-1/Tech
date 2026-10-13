@@ -212,7 +212,211 @@ async function findAuthUserById(userId) {
 }
 
 
+// Create a new login session and its initial refresh token atomically.
+async function createAuthSession({
+    userId,
+    refreshTokenHash,
+    expiresAt,
+    absoluteExpiresAt,
+    userAgent
+}) {
+    return prisma.$transaction(async (tx) => {
+        const session = await tx.authSession.create({
+            data: {
+                userId,
+                expiresAt,
+                absoluteExpiresAt,
+                userAgent: userAgent || null
+            }
+        });
 
+        await tx.refreshToken.create({
+            data: {
+                sessionId: session.id,
+                tokenHash: refreshTokenHash,
+                expiresAt
+            }
+        });
+
+        return {
+            id: session.id,
+            expiresAt: session.expiresAt,
+            absoluteExpiresAt: session.absoluteExpiresAt
+        };
+    });
+}
+
+// Find a refresh token and its associated session and user.
+function findRefreshToken(tokenHash) {
+    return prisma.refreshToken.findUnique({
+        where: { tokenHash },
+        select: {
+            id: true,
+            sessionId: true,
+            expiresAt: true,
+            usedAt: true,
+            revokedAt: true,
+            session: {
+                select: {
+                    id: true,
+                    userId: true,
+                    expiresAt: true,
+                    absoluteExpiresAt: true,
+                    revokedAt: true,
+                    user: {
+                        select: {
+                            id: true,
+                            role: true,
+                            status: true,
+                            tokenVersion: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Revoke a session and all its refresh tokens atomically.
+async function revokeAuthSession({ sessionId, reason }) {
+    const now = new Date();
+
+    return prisma.$transaction(async (tx) => {
+        const sessionUpdate = await tx.authSession.updateMany({
+            where: {
+                id: sessionId,
+                revokedAt: null
+            },
+            data: {
+                revokedAt: now,
+                revocationReason: reason
+            }
+        });
+
+        await tx.refreshToken.updateMany({
+            where: {
+                sessionId,
+                revokedAt: null
+            },
+            data: {
+                revokedAt: now
+            }
+        });
+
+        return sessionUpdate.count === 1;
+    });
+}
+
+// Atomically consume a refresh token and create its replacement.
+// A token can be consumed only once, even if refresh requests race.
+async function rotateRefreshToken({
+    oldTokenId,
+    sessionId,
+    newTokenHash,
+    newExpiresAt
+}) {
+    return prisma.$transaction(async (tx) => {
+        const now = new Date();
+
+        // Lock the session row so concurrent refresh requests serialize.
+        await tx.$queryRaw`
+            SELECT id
+            FROM auth_sessions
+            WHERE id = ${sessionId}
+            FOR UPDATE
+        `;
+
+        const session = await tx.authSession.findUnique({
+            where: { id: sessionId },
+            select: {
+                id: true,
+                expiresAt: true,
+                absoluteExpiresAt: true,
+                revokedAt: true,
+                user: {
+                    select: {
+                        status: true,
+                        tokenVersion: true
+                    }
+                }
+            }
+        });
+
+        if (
+            !session ||
+            session.revokedAt ||
+            session.expiresAt <= now ||
+            session.absoluteExpiresAt <= now ||
+            session.user.status !== "verified"
+        ) {
+            return { status: "invalid_session" };
+        }
+
+        const consumed = await tx.refreshToken.updateMany({
+            where: {
+                id: oldTokenId,
+                sessionId,
+                usedAt: null,
+                revokedAt: null,
+                expiresAt: { gt: now }
+            },
+            data: { usedAt: now }
+        });
+
+        if (consumed.count !== 1) {
+            // A previously consumed token may indicate reuse.
+            await tx.authSession.updateMany({
+                where: {
+                    id: sessionId,
+                    revokedAt: null
+                },
+                data: {
+                    revokedAt: now,
+                    revocationReason: "refresh_token_reuse"
+                }
+            });
+
+            await tx.refreshToken.updateMany({
+                where: {
+                    sessionId,
+                    revokedAt: null
+                },
+                data: { revokedAt: now }
+            });
+
+            return { status: "reuse_detected" };
+        }
+
+        const expiresAt = new Date(
+            Math.min(
+                now.getTime() + 7 * 24 * 60 * 60 * 1000,
+                session.absoluteExpiresAt.getTime()
+            )
+        );
+
+        await tx.refreshToken.create({
+            data: {
+                sessionId,
+                tokenHash: newTokenHash,
+                expiresAt: expiresAt
+            }
+        });
+
+        await tx.authSession.update({
+            where: { id: sessionId },
+            data: {
+                expiresAt,
+                lastSeenAt: now
+            }
+        });
+
+        return {
+            status: "rotated",
+            expiresAt,
+            tokenVersion: session.user.tokenVersion
+        };
+    });
+}
 
 module.exports = {
     createCustomerWithVerificationToken,
@@ -222,5 +426,9 @@ module.exports = {
     createResendVerificationToken,
     invalidateVerificationToken,
     findUserByEmail,
-    findAuthUserById
+    findAuthUserById,
+    createAuthSession,
+    findRefreshToken,
+    revokeAuthSession,
+    rotateRefreshToken
 };

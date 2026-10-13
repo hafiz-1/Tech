@@ -21,6 +21,7 @@ async function requireAuth(req, res, next) {
                 audience: "techcart-client"
             });
         } catch (error) {
+            console.error("JWT verification failed:", error.name, error.message);
             return res.status(401).json({
                 success: false,
                 message: "Invalid or expired authentication token"
@@ -37,7 +38,16 @@ async function requireAuth(req, res, next) {
             });
         }
 
-        const user = await userQueries.findAuthUserById(payload.sub);
+        const userId = Number(payload.sub);
+
+        if (!Number.isSafeInteger(userId) || userId <= 0) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid authentication token"
+            });
+        }
+
+        const user = await userQueries.findAuthUserById(userId);
 
         if (!user || user.status !== "verified") {
             return res.status(401).json({
