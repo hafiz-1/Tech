@@ -197,6 +197,21 @@ function findUserByEmail(email) {
     });
 }
 
+// Find an authenticated user by ID.
+
+async function findAuthUserById(userId) {
+    return prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            role: true,
+            status: true,
+            tokenVersion: true
+        }
+    });
+}
+
+
 
 
 module.exports = {
@@ -206,5 +221,6 @@ module.exports = {
     findUnverifiedCustomerByEmail,
     createResendVerificationToken,
     invalidateVerificationToken,
-    findUserByEmail
+    findUserByEmail,
+    findAuthUserById
 };
