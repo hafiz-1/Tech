@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/auth.routes");
 const requestLogger = require("./middleware/requestLogger");
+const catalogRoutes = require("./routes/catalog.routes");
 
 const app = express();
 app.use(requestLogger);
@@ -26,6 +27,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api", catalogRoutes);
 
 // Unknown routes
 app.use((req, res) => {
