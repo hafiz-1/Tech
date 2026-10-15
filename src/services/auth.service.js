@@ -84,7 +84,10 @@ async function loginCustomer({ email, password }) {
     const invalidCredentials = new Error("Invalid email or password");
     invalidCredentials.statusCode = 401;
 
-    if (!user || user.role !== "customer") {
+    // Public registration still creates customers only, but the seeded
+    // Super Admin must be able to establish a session through the same login
+    // endpoint to use the protected admin APIs.
+    if (!user || !["customer", "super_admin"].includes(user.role)) {
         throw invalidCredentials;
     }
 

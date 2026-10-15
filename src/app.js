@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/auth.routes");
 const requestLogger = require("./middleware/requestLogger");
 const catalogRoutes = require("./routes/catalog.routes");
+const stockRoutes = require("./routes/stock.routes");
+const purchasingRoutes = require("./routes/purchasing.routes");
 
 const app = express();
 app.use(requestLogger);
@@ -28,6 +30,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api", catalogRoutes);
+app.use("/api/admin/stock", stockRoutes);
+app.use("/api/admin", purchasingRoutes);
 
 // Unknown routes
 app.use((req, res) => {

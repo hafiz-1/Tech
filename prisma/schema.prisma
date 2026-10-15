@@ -1,9 +1,9 @@
 // =====================================================================
 // TechCart - Prisma schema v2 (PostgreSQL)
 // Aligned with: BRD, SRS corrections, System Design.
-// Rules Prisma cannot express (CHECK constraints, partial unique indexes,
-// stock functions, triggers, availability view) live in extras.sql and go
-// into the FIRST migration (see setup notes).
+// Business integrity rules that Prisma cannot express are enforced by the
+// TypeScript service layer and reported by the integrity check. Raw SQL is
+// limited to tagged-template row locks and read-only aggregate queries.
 // =====================================================================
 
 generator client {
