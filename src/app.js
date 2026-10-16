@@ -7,6 +7,8 @@ const requestLogger = require("./middleware/requestLogger");
 const catalogRoutes = require("./routes/catalog.routes");
 const stockRoutes = require("./routes/stock.routes");
 const purchasingRoutes = require("./routes/purchasing.routes");
+const orderRoutes = require("./routes/order.routes");
+const shippingRoutes = require("./routes/shipping.routes");
 
 const app = express();
 app.use(requestLogger);
@@ -30,6 +32,8 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api", catalogRoutes);
+app.use("/api", orderRoutes);
+app.use("/api", shippingRoutes);
 app.use("/api/admin/stock", stockRoutes);
 app.use("/api/admin", purchasingRoutes);
 

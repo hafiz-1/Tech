@@ -323,7 +323,7 @@ async function releaseExpiredReservations(now = new Date()) {
     });
 }
 
-async function releaseOrderReservations(tx, orderId, status = "cancelled") {
+async function releaseOrderReservations(tx, orderId, status = "cancelled", cancellation = {}) {
     positiveInteger(orderId, "orderId");
     if (status !== "cancelled") throw stockError("Invalid reservation release status", 400);
     const reservations = await queries.findOrderReservations(tx, orderId, { status: "active", releasedAt: null });
@@ -333,7 +333,12 @@ async function releaseOrderReservations(tx, orderId, status = "cancelled") {
     if (!order || order.status !== "pending") throw stockError("ORDER_NOT_PENDING");
     const now = new Date();
     await queries.updateReservations(tx, reservations.map(row => row.id), { status: "active" }, { status: "cancelled", releasedAt: now });
-    return queries.updateOrder(tx, orderId, { status: "cancelled", cancelledAt: now });
+    return queries.updateOrder(tx, orderId, {
+        status: "cancelled",
+        cancelledAt: now,
+        ...(cancellation.cancelledById ? { cancelledById: cancellation.cancelledById } : {}),
+        ...(cancellation.cancellationReason ? { cancellationReason: cancellation.cancellationReason } : {})
+    });
 }
 
 function publicInventoryVariant(variant) {
