@@ -1,32 +1,47 @@
-const { registerCustomer, verifyCustomerEmail, resendVerificationOtp, loginCustomer } = require("../services/auth.service");
 
-const { createLoginSession, logoutSession } = require("../services/session.service");
+const {
+    registerCustomer,
+    verifyCustomerEmail,
+    resendVerificationOtp,
+    loginCustomer
+} = require("../services/auth.service");
 
-const { refreshLoginSession } = require("../services/session.service");
+const {
+    createLoginSession,
+    logoutSession,
+    refreshLoginSession
+} = require("../services/session.service");
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Shared security settings for authentication cookies
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax"
+};
+
+// Register a customer and initiate email verification
 async function register(req, res, next) {
     try {
-        const { name, email, phone, password, confirmPassword } =
-            req.body || {};
+        const { name, email, phone, password, confirmPassword } = req.body || {};
 
-        if (
-            typeof name !== "string" ||
-            typeof email !== "string" ||
-            typeof phone !== "string" ||
-            typeof password !== "string" ||
-            typeof confirmPassword !== "string"
-        ) {
+        // Ensure all required fields are strings
+        if (![name, email, phone, password, confirmPassword].every(
+            field => typeof field === "string"
+        )) {
             return res.status(400).json({
                 success: false,
                 message: "All registration fields are required"
             });
         }
 
+        // Validate field values and password confirmation
         if (
             !name.trim() ||
             !email.trim() ||
             !phone.trim() ||
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+            !EMAIL_REGEX.test(email.trim()) ||
             password.length < 4 ||
             password !== confirmPassword
         ) {
@@ -36,12 +51,7 @@ async function register(req, res, next) {
             });
         }
 
-        const user = await registerCustomer({
-            name,
-            email,
-            phone,
-            password
-        });
+        const user = await registerCustomer({ name, email, phone, password });
 
         return res.status(201).json({
             success: true,
@@ -53,15 +63,15 @@ async function register(req, res, next) {
     }
 }
 
-
+// Verify the customer's email using a six-digit OTP
 async function verifyEmail(req, res, next) {
     try {
         const { email, otp } = req.body || {};
 
+        // Validate field types, email format, and OTP format
         if (
-            typeof email !== "string" ||
-            typeof otp !== "string" ||
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+            ![email, otp].every(field => typeof field === "string") ||
+            !EMAIL_REGEX.test(email.trim()) ||
             !/^\d{6}$/.test(otp)
         ) {
             return res.status(400).json({
@@ -82,17 +92,12 @@ async function verifyEmail(req, res, next) {
     }
 }
 
-
-// Resend verification OTP
-
+// Resend the email verification OTP
 async function resendOtp(req, res, next) {
     try {
-        const { email } = req.body;
+        const { email } = req.body || {};
 
-        if (
-            typeof email !== "string" ||
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-        ) {
+        if (typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
             return res.status(400).json({
                 message: "Please provide a valid email address"
             });
@@ -106,13 +111,17 @@ async function resendOtp(req, res, next) {
     }
 }
 
-// Login function 
-
+// Authenticate the customer and create a session
 async function login(req, res, next) {
     try {
         const { email, password } = req.body || {};
 
-        if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
+        // Ensure both credentials are strings and non-empty
+        if (
+            ![email, password].every(field => typeof field === "string") ||
+            !email.trim() ||
+            !password
+        ) {
             return res.status(400).json({
                 success: false,
                 message: "Email and password are required"
@@ -122,12 +131,7 @@ async function login(req, res, next) {
         const customer = await loginCustomer({ email, password });
         const session = await createLoginSession(customer, req.get("user-agent"));
 
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        };
-
+        // Set the access token and refresh token cookies
         res.cookie("auth_token", session.accessToken, {
             ...cookieOptions,
             maxAge: 15 * 60 * 1000,
@@ -136,10 +140,14 @@ async function login(req, res, next) {
 
         res.cookie("refresh_token", session.refreshToken, {
             ...cookieOptions,
-            maxAge: Math.max(0, new Date(session.session.expiresAt).getTime() - Date.now()),
+            maxAge: Math.max(
+                0,
+                new Date(session.session.expiresAt).getTime() - Date.now()
+            ),
             path: "/api/auth"
         });
 
+        // Return customer details without exposing tokens
         return res.status(200).json({
             success: true,
             message: "Login successful",
@@ -155,25 +163,19 @@ async function login(req, res, next) {
     } catch (error) {
         next(error);
     }
-
 }
-//  logout function
 
+// Invalidate the current session and clear authentication cookies
 async function logout(req, res, next) {
     try {
         await logoutSession(req.user.sessionId);
 
-        for (const [name, path] of [
-            ["auth_token", "/"],
-            ["refresh_token", "/api/auth"]
-        ]) {
-            res.clearCookie(name, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                path
-            });
-        }
+        // Cookie paths must match the paths used when setting them
+        res.clearCookie("auth_token", { ...cookieOptions, path: "/" });
+        res.clearCookie("refresh_token", {
+            ...cookieOptions,
+            path: "/api/auth"
+        });
 
         return res.status(200).json({
             success: true,
@@ -184,8 +186,7 @@ async function logout(req, res, next) {
     }
 }
 
-// Refresh session function
-
+// Renew the authentication tokens using the refresh token
 async function refresh(req, res, next) {
     try {
         const refreshToken = req.cookies?.refresh_token;
@@ -199,24 +200,19 @@ async function refresh(req, res, next) {
 
         const result = await refreshLoginSession(refreshToken);
 
+        // Set the renewed authentication cookies
         res.cookie("auth_token", result.accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            ...cookieOptions,
             maxAge: 15 * 60 * 1000,
             path: "/"
         });
 
-        const refreshMaxAge = Math.max(
-            0,
-            new Date(result.expiresAt).getTime() - Date.now()
-        );
-
         res.cookie("refresh_token", result.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: refreshMaxAge,
+            ...cookieOptions,
+            maxAge: Math.max(
+                0,
+                new Date(result.expiresAt).getTime() - Date.now()
+            ),
             path: "/api/auth"
         });
 
@@ -227,9 +223,14 @@ async function refresh(req, res, next) {
     } catch (error) {
         next(error);
     }
-
 }
 
+// Export controllers for authentication routes
 module.exports = {
-    register, verifyEmail, resendOtp, login, logout, refresh
+    register,
+    verifyEmail,
+    resendOtp,
+    login,
+    logout,
+    refresh
 };
