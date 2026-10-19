@@ -103,6 +103,7 @@ async function updateSupplier(idValue, input, actorUserId) {
     if (input.isActive !== undefined) {
         if (typeof input.isActive !== "boolean") throw purchasingError("isActive must be a boolean", 400);
         data.isActive = input.isActive;
+        if (input.isActive) data.deletedAt = null;
     }
     if (!Object.keys(data).length) throw purchasingError("No valid fields provided", 400);
     return stockService.runStockTransaction(async tx => {

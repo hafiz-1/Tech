@@ -12,7 +12,7 @@ function listSuppliers({ includeInactive = false } = {}) {
 }
 
 function findSupplier(id) {
-    return prisma.supplier.findFirst({ where: { id, deletedAt: null } });
+    return prisma.supplier.findUnique({ where: { id } });
 }
 
 function createSupplier(tx, data) {

@@ -44,6 +44,7 @@ Admin endpoints (Super Admin only):
 Purchasing and receiving endpoints (Super Admin only):
 
 - `GET/POST /api/admin/suppliers`; `PATCH/DELETE /api/admin/suppliers/:supplierId`.
+- Deleting a supplier deactivates and soft-deletes it. To restore one, use `PATCH /api/admin/suppliers/:supplierId` with `{ "isActive": true }`; active purchase-order validation remains enforced.
 - `GET/POST /api/admin/purchase-orders`; `GET/PATCH /api/admin/purchase-orders/:purchaseOrderId`.
 - `POST /api/admin/purchase-orders/:purchaseOrderId/place` places a draft order.
 - `POST /api/admin/purchase-orders/:purchaseOrderId/receive` receives one or more lines and creates inventory batches. JSON body: `{ "items": [{ "purchaseOrderItemId": 1, "quantity": 5, "batchReference": "LOT-1" }] }`.

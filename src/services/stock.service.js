@@ -114,10 +114,8 @@ async function reserveStock(tx, { userId, orderId, items, now = new Date(), minu
     // Order -> variant lock ordering matches confirmation after it has locked
     // its reservations, avoiding an order/variant lock cycle on retry.
     await lockOrders(tx, [orderId]);
-    const [order, user] = await Promise.all([
-        queries.getOrder(tx, orderId, true),
-        queries.getUser(tx, userId)
-    ]);
+    const order = await queries.getOrder(tx, orderId, true);
+    const user = await queries.getUser(tx, userId);
     if (!order || order.userId !== userId || order.status !== "pending") throw stockError("ORDER_NOT_PENDING");
     if (!user || user.status !== "verified" || user.deletedAt) throw stockError("CUSTOMER_NOT_ELIGIBLE", 403);
     const orderItems = order.items.map(item => ({ variantId: item.variantId, quantity: item.quantity }));
@@ -308,10 +306,10 @@ async function releaseExpiredReservations(now = new Date()) {
         await queries.updateReservations(tx, ids, { status: "active" }, { status: "expired", releasedAt: now });
         await lockOrders(tx, orderIds);
         for (const orderId of orderIds) {
-            const [activeCount, order] = await Promise.all([
-                queries.countReservations(tx, { orderId, status: "active", releasedAt: null, expiresAt: { gt: now } }),
-                queries.getOrder(tx, orderId)
-            ]);
+            const activeCount = await queries.countReservations(tx, {
+                orderId, status: "active", releasedAt: null, expiresAt: { gt: now }
+            });
+            const order = await queries.getOrder(tx, orderId);
             if (!activeCount && order?.status === "pending") {
                 await queries.updateOrder(tx, orderId, {
                     status: "cancelled", cancelledAt: now,
