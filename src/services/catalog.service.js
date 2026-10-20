@@ -38,6 +38,13 @@ function availabilityFor(variant) {
         : "Out of Stock";
 }
 
+function stockQuantityFor(variant) {
+    return variant.batches.reduce(
+        (total, batch) => total + batch.quantityRemaining,
+        0
+    );
+}
+
 function publicProduct(product) {
     return {
         id: product.id,
@@ -56,6 +63,7 @@ function publicProduct(product) {
             sku: variant.sku,
             specifications: variant.specifications,
             sellingPrice: variant.sellingPrice,
+            stockQuantity: stockQuantityFor(variant),
             availability: availabilityFor(variant)
         }))
     };
