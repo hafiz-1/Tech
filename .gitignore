@@ -1,0 +1,15 @@
+# Environment files can contain credentials. Keep only example templates.
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Dependencies and generated output
+**/node_modules/
+**/dist/
+**/build/
+**/.output/
