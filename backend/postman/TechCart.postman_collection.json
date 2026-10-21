@@ -1,0 +1,136 @@
+{
+  "info": {
+    "_postman_id": "15f89088-846e-44b2-96f5-3b01a9924db4",
+    "name": "TechCart API",
+    "description": "TechCart backend API. Public requests are grouped separately from Super Admin requests. Login with the Admin > Authentication > Login request; Postman stores the auth_token and refresh_token cookies automatically. All GET requests have no body.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "adminEmail", "value": "" },
+    { "key": "adminPassword", "value": "" },
+    { "key": "customerEmail", "value": "" },
+    { "key": "customerPassword", "value": "" },
+    { "key": "verificationOtp", "value": "000000" },
+    { "key": "productId", "value": "1" },
+    { "key": "categoryId", "value": "1" },
+    { "key": "brandId", "value": "1" },
+    { "key": "variantId", "value": "1" },
+    { "key": "supplierId", "value": "1" },
+    { "key": "purchaseOrderId", "value": "1" },
+    { "key": "purchaseOrderItemId", "value": "1" },
+    { "key": "batchId", "value": "1" }
+    ,{ "key": "cartItemId", "value": "1" }
+    ,{ "key": "orderId", "value": "1" }
+    ,{ "key": "shippingRateId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Authentication",
+          "item": [
+            { "name": "Register Customer", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"phone\": \"+923001234567\",\n  \"password\": \"{{customerPassword}}\",\n  \"confirmPassword\": \"{{customerPassword}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register" } },
+            { "name": "Verify Email", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"otp\": \"{{verificationOtp}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/verify-email" } },
+            { "name": "Resend Verification OTP", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/resend-otp" } },
+            { "name": "Customer Login (optional)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/login" } },
+            { "name": "Test Protected Session", "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/test-protected" } },
+            { "name": "Refresh Session", "request": { "method": "POST", "url": "{{baseUrl}}/api/auth/refresh" } },
+            { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/api/auth/logout" } }
+          ]
+        },
+        {
+          "name": "Public Catalog",
+          "item": [
+            { "name": "List Categories", "request": { "method": "GET", "url": "{{baseUrl}}/api/categories" } },
+            { "name": "List Brands", "request": { "method": "GET", "url": "{{baseUrl}}/api/brands" } },
+            { "name": "List Products", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/products?page=1&limit=12&sort=newest", "host": ["{{baseUrl}}"], "path": ["api", "products"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "12" }, { "key": "sort", "value": "newest" }] } } },
+            { "name": "Get Product", "request": { "method": "GET", "url": "{{baseUrl}}/api/products/{{productId}}" } },
+            { "name": "List Active Shipping Rates", "request": { "method": "GET", "url": "{{baseUrl}}/api/shipping-rates" } }
+          ]
+        },
+        {
+          "name": "Customer Cart and Orders (login required)",
+          "item": [
+            { "name": "Get Cart", "request": { "method": "GET", "url": "{{baseUrl}}/api/cart" } },
+            { "name": "Add Cart Item", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"variantId\": {{variantId}},\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/cart/items" } },
+            { "name": "Update Cart Item Quantity", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}" } },
+            { "name": "Remove Cart Item", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}" } },
+            { "name": "Clear Cart", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/cart" } },
+            { "name": "Checkout (creates pending order and reserves stock)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"recipientName\": \"Test Customer\",\n  \"contactNumber\": \"+923001234567\",\n  \"address\": \"123 Main Road\",\n  \"city\": \"Lahore\",\n  \"postalCode\": \"54000\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/checkout" } },
+            { "name": "List My Orders", "request": { "method": "GET", "url": "{{baseUrl}}/api/orders?page=1&limit=10" } },
+            { "name": "Get My Order", "request": { "method": "GET", "url": "{{baseUrl}}/api/orders/{{orderId}}" } },
+            { "name": "Cancel Pending Order", "request": { "method": "POST", "url": "{{baseUrl}}/api/orders/{{orderId}}/cancel" } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin (Super Admin)",
+      "item": [
+        {
+          "name": "Authentication",
+          "description": "Run Login first. Store the admin credentials in collection variables or an environment. Postman automatically saves the auth_token and refresh_token Set-Cookie values for localhost.",
+          "item": [
+            { "name": "Login", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/login" } }
+          ]
+        },
+        {
+          "name": "Catalog Management",
+          "item": [
+            { "name": "Create Category", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Mobiles\",\n  \"description\": \"Mobile phones\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/categories" } },
+            { "name": "Update Category", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Smartphones\",\n  \"description\": \"Updated description\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/categories/{{categoryId}}" } },
+            { "name": "Delete Category (soft delete)", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/categories/{{categoryId}}" } },
+            { "name": "Create Brand", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"TestBrand\",\n  \"description\": \"Electronics brand\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/brands" } },
+            { "name": "Update Brand", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Brand\",\n  \"description\": \"Updated description\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/brands/{{brandId}}" } },
+            { "name": "Delete Brand (soft delete)", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/brands/{{brandId}}" } },
+            { "name": "Create Product", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Test Phone\",\n  \"categoryId\": {{categoryId}},\n  \"brandId\": {{brandId}},\n  \"description\": \"Product for inventory testing\",\n  \"images\": [],\n  \"specifications\": {}\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/products" } },
+            { "name": "Update Product", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Test Phone\",\n  \"description\": \"Updated product description\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/products/{{productId}}" } },
+            { "name": "Delete Product (soft delete)", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/products/{{productId}}" } },
+            { "name": "Create Product Variant", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"sku\": \"TC-TEST-PHONE-001\",\n  \"sellingPrice\": 50000,\n  \"specifications\": {\n    \"color\": \"Black\",\n    \"storage\": \"128GB\"\n  },\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/products/{{productId}}/variants" } },
+            { "name": "Update Variant", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"sellingPrice\": 50000,\n  \"specifications\": { \"color\": \"Black\", \"storage\": \"128GB\" },\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/variants/{{variantId}}" } },
+            { "name": "Delete Variant (soft delete)", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/variants/{{variantId}}" } }
+          ]
+        },
+        {
+          "name": "Stock",
+          "item": [
+            { "name": "List Inventory", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/admin/stock?page=1&limit=25", "host": ["{{baseUrl}}"], "path": ["api", "admin", "stock"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "25" }] } } },
+            { "name": "Get Variant Inventory Detail", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/stock/variants/{{variantId}}" } },
+            { "name": "Get Batch History", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/stock/batches/{{batchId}}" } },
+            { "name": "Adjust Batch Stock", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"change\": 1,\n  \"reason\": \"found\",\n  \"note\": \"Inventory count correction\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/stock/batches/{{batchId}}/adjust" } }
+          ]
+        },
+        {
+          "name": "Shipping Rates",
+          "item": [
+            { "name": "List Shipping Rates", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/shipping-rates" } },
+            { "name": "List Shipping Rates (include inactive)", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/shipping-rates?includeInactive=true" } },
+            { "name": "Create Shipping Rate", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"city\": \"Lahore\",\n  \"fee\": 250\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/shipping-rates" } },
+            { "name": "Update Shipping Rate", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fee\": 300\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/shipping-rates/{{shippingRateId}}" } },
+            { "name": "Deactivate Shipping Rate", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/shipping-rates/{{shippingRateId}}" } }
+          ]
+        },
+        {
+          "name": "Purchasing",
+          "item": [
+            { "name": "List Suppliers", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/suppliers" } },
+            { "name": "List Suppliers (include inactive)", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/suppliers?includeInactive=true" } },
+            { "name": "Create Supplier", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"companyName\": \"Test Supplier\",\n  \"contactPerson\": \"Test Contact\",\n  \"phone\": \"+923001234567\",\n  \"email\": \"supplier@example.com\",\n  \"address\": \"Lahore, Pakistan\",\n  \"licenseNumber\": \"TEST-001\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/suppliers" } },
+            { "name": "Update Supplier", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"phone\": \"+923001234567\",\n  \"isActive\": true\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/suppliers/{{supplierId}}" } },
+            { "name": "Deactivate Supplier", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/suppliers/{{supplierId}}" } },
+            { "name": "List Purchase Orders", "request": { "method": "GET", "url": { "raw": "{{baseUrl}}/api/admin/purchase-orders?page=1&limit=25", "host": ["{{baseUrl}}"], "path": ["api", "admin", "purchase-orders"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "25" }] } } },
+            { "name": "List Purchase Orders by Status", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/purchase-orders?page=1&limit=25&status=draft" } },
+            { "name": "Create Purchase Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"supplierId\": {{supplierId}},\n  \"items\": [\n    {\n      \"variantId\": {{variantId}},\n      \"quantity\": 10,\n      \"purchasePrice\": 40000\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/purchase-orders" } },
+            { "name": "Get Purchase Order", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/purchase-orders/{{purchaseOrderId}}" } },
+            { "name": "Update Draft Purchase Order", "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"supplierId\": {{supplierId}},\n  \"items\": [\n    {\n      \"variantId\": {{variantId}},\n      \"quantity\": 10,\n      \"purchasePrice\": 40000\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/purchase-orders/{{purchaseOrderId}}" } },
+            { "name": "Place Purchase Order", "request": { "method": "POST", "url": "{{baseUrl}}/api/admin/purchase-orders/{{purchaseOrderId}}/place" } },
+            { "name": "Receive Purchase Order (creates batches)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    {\n      \"purchaseOrderItemId\": {{purchaseOrderItemId}},\n      \"quantity\": 10,\n      \"batchReference\": \"LOT-001\"\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/admin/purchase-orders/{{purchaseOrderId}}/receive" } },
+            { "name": "Cancel Purchase Order", "request": { "method": "POST", "url": "{{baseUrl}}/api/admin/purchase-orders/{{purchaseOrderId}}/cancel" } }
+          ]
+        }
+      ]
+    }
+  ]
+}
