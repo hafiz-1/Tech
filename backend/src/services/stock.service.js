@@ -345,6 +345,7 @@ function publicInventoryVariant(variant) {
     return {
         id: variant.id,
         sku: variant.sku,
+        specifications: variant.specifications,
         sellingPrice: variant.sellingPrice,
         isActive: variant.isActive,
         product: variant.product,

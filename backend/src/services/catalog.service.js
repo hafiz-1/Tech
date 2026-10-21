@@ -38,14 +38,16 @@ function availabilityFor(variant) {
         : "Out of Stock";
 }
 
-function stockQuantityFor(variant) {
-    return variant.batches.reduce(
-        (total, batch) => total + batch.quantityRemaining,
-        0
-    );
-}
-
 function publicProduct(product) {
+    const variants = product.variants.map(variant => ({
+        id: variant.id,
+        sku: variant.sku,
+        specifications: variant.specifications,
+        // Prisma Decimal values serialize as strings; the storefront expects numbers.
+        sellingPrice: Number(variant.sellingPrice),
+        availability: availabilityFor(variant)
+    }));
+
     return {
         id: product.id,
         name: product.name,
@@ -58,14 +60,10 @@ function publicProduct(product) {
         brand: product.brand
             ? { id: product.brand.id, name: product.brand.name }
             : null,
-        variants: product.variants.map(variant => ({
-            id: variant.id,
-            sku: variant.sku,
-            specifications: variant.specifications,
-            sellingPrice: variant.sellingPrice,
-            stockQuantity: stockQuantityFor(variant),
-            availability: availabilityFor(variant)
-        }))
+        availability: variants.some(variant => variant.availability === "Available")
+            ? "Available"
+            : "Out of Stock",
+        variants
     };
 }
 

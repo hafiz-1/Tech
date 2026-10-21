@@ -50,7 +50,14 @@ async function requireAuth(req, res, next) {
             return res.status(401).json({ success: false, message: "Session is invalid or expired. Please log in again." });
         }
 
-        req.user = { id: user.id, role: user.role, status: user.status, sessionId: payload.sid };
+        req.user = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            sessionId: payload.sid
+        };
         next();
     } catch (error) {
         next(error);

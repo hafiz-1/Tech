@@ -21,6 +21,13 @@ router.get("/test-protected", requireAuth, (req, res) => {
     });
 });
 
+router.get("/me", requireAuth, (req, res) => {
+    return res.status(200).json({
+        success: true,
+        user: req.user
+    });
+});
+
 router.post("/logout", requireAuth, logout);
 
 router.post("/refresh", refresh);

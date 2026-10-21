@@ -52,7 +52,7 @@ async function register(req, res, next) {
         }
 
         const user = await registerCustomer({ name, email, phone, password });
-
+            console.log("User registered:");
         return res.status(201).json({
             success: true,
             message: "Account created. Please verify your email.",
@@ -81,7 +81,7 @@ async function verifyEmail(req, res, next) {
         }
 
         const user = await verifyCustomerEmail({ email, otp });
-
+            console.log("Email verified for user:");
         return res.status(200).json({
             success: true,
             message: "Email verified successfully.",
@@ -130,7 +130,7 @@ async function login(req, res, next) {
 
         const customer = await loginCustomer({ email, password });
         const session = await createLoginSession(customer, req.get("user-agent"));
-
+            console.log("Customer logged in and session created:");
         // Set the access token and refresh token cookies
         res.cookie("auth_token", session.accessToken, {
             ...cookieOptions,
