@@ -10,8 +10,6 @@ import {
 import { apiFetch, SESSION_EXPIRED_EVENT, unwrap } from "./api";
 import type { AuthUser, RegisterInput } from "./types";
 
-const USER_CACHE_KEY = "techcart:user";
-
 function normalizeUser(body: unknown): AuthUser | null {
   const data = unwrap<Record<string, unknown> | null>(body);
   if (!data || typeof data !== "object") return null;
@@ -50,7 +48,7 @@ export function isAdminRole(role: string | undefined): boolean {
 
 async function fetchCurrentUser(): Promise<AuthUser | null> {
   try {
-    return normalizeUser(await apiFetch("/api/auth/me", { retryOn401: false }));
+    return normalizeUser(await apiFetch("/api/auth/session", { retryOn401: false }));
   } catch {
     // A missing or expired session is an anonymous user.
     return null;
@@ -58,25 +56,14 @@ async function fetchCurrentUser(): Promise<AuthUser | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    try {
-      const cached = localStorage.getItem(USER_CACHE_KEY);
-      return cached ? (JSON.parse(cached) as AuthUser) : null;
-    } catch {
-      return null;
-    }
-  });
+  // Keep the server and first browser render identical. The cookie session is
+  // restored after hydration by refreshUser; localStorage is not authoritative.
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [sessionExpiredMessage, setSessionExpiredMessage] = useState<string | null>(null);
 
   const persist = useCallback((next: AuthUser | null) => {
     setUser(next);
-    try {
-      if (next) localStorage.setItem(USER_CACHE_KEY, JSON.stringify(next));
-      else localStorage.removeItem(USER_CACHE_KEY);
-    } catch {
-      // storage unavailable; session state lives in memory only
-    }
   }, []);
 
   const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
@@ -100,14 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await apiFetch("/api/auth/login", {
+      await apiFetch("/api/auth/login", {
         method: "POST",
         body: { email, password },
         retryOn401: false,
       });
-      const loggedIn = normalizeUser(res) ?? { email };
-      // Confirm the session and pick up the authoritative role when available.
-      const confirmed = (await fetchCurrentUser()) ?? loggedIn;
+      // Only expose authenticated state after verifying that the browser sent
+      // the session cookie back successfully.
+      const confirmed = await fetchCurrentUser();
+      if (!confirmed) {
+        throw new Error("Login succeeded, but the session could not be verified. Please sign in again.");
+      }
       persist(confirmed);
       return confirmed;
     },

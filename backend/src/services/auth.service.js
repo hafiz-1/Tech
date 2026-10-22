@@ -40,13 +40,22 @@ async function registerCustomer({ name, email, phone, password }) {
             }
         });
     } catch (error) {
+        // Prisma's PostgreSQL driver adapter may omit meta.target and include
+        // only the database constraint name in the error message.
+        const uniqueTarget = [
+            error.meta?.target,
+            error.meta?.constraint,
+            error.meta?.driverAdapterError?.cause?.constraint,
+            error.message
+        ]
+            .flat()
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
         if (
             error.code === "P2002" &&
-            (
-                Array.isArray(error.meta?.target)
-                    ? error.meta.target.includes("email")
-                    : String(error.meta?.target || "").includes("email")
-            )
+            (uniqueTarget.includes("email") || uniqueTarget.includes("users_email_key"))
         ) {
             const conflict = new Error(
                 "An account with this email already exists"

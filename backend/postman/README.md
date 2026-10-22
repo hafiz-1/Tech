@@ -18,3 +18,7 @@ Create/select a category and brand, create a product, create a variant under tha
 The collection includes destructive soft-delete, deactivate, cancel, receive, and stock-adjustment requests. Use suitable IDs and quantities for your database before sending them. The stock adjustment example uses `change: 1`; the valid amount depends on batch limits and current inventory rules.
 
 For checkout, first configure an active city rate through **Admin → Shipping Rates**, log in as a verified customer, add available variants to the cart, and send checkout with that city. Checkout creates a pending order and holds inventory for 15 minutes; payment-provider integration is not included yet.
+
+## Checking the current session
+
+Use **Public → Authentication → Get Current Session (anonymous-safe)** to check authentication state. `GET /api/auth/session` returns the current user when signed in and `{ "success": true, "user": null }` when signed out or when the cookie is invalid, instead of returning a 401. Use **Test Protected Session** when you specifically want to verify that the protected cookie is accepted.

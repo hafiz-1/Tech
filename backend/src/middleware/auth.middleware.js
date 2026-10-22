@@ -2,10 +2,18 @@ const jwt = require("jsonwebtoken");
 const prisma = require("../config/prisma");
 const userQueries = require("../queries/user.queries");
 
-async function requireAuth(req, res, next) {
+async function authenticate(req, res, next, optional) {
+    const reject = message => {
+        if (optional) {
+            req.user = null;
+            return next();
+        }
+        return res.status(401).json({ success: false, message });
+    };
+
     try {
         const token = req.cookies?.auth_token;
-        if (!token) return res.status(401).json({ success: false, message: "Authentication required" });
+        if (!token) return reject("Authentication required");
 
         let payload;
         try {
@@ -14,14 +22,14 @@ async function requireAuth(req, res, next) {
                 audience: "techcart-client"
             });
         } catch {
-            return res.status(401).json({ success: false, message: "Invalid or expired authentication token" });
+            return reject("Invalid or expired authentication token");
         }
 
         const userId = Number(payload.sub);
         if (!Number.isSafeInteger(userId) || userId <= 0 ||
             !Number.isInteger(payload.tokenVersion) ||
             !Number.isInteger(payload.sid) || payload.sid <= 0) {
-            return res.status(401).json({ success: false, message: "Invalid authentication token" });
+            return reject("Invalid authentication token");
         }
 
         const [user, session] = await Promise.all([
@@ -47,7 +55,7 @@ async function requireAuth(req, res, next) {
             session.revokedAt ||
             session.expiresAt <= now ||
             session.absoluteExpiresAt <= now) {
-            return res.status(401).json({ success: false, message: "Session is invalid or expired. Please log in again." });
+            return reject("Session is invalid or expired. Please log in again.");
         }
 
         req.user = {
@@ -64,4 +72,12 @@ async function requireAuth(req, res, next) {
     }
 }
 
-module.exports = { requireAuth };
+function requireAuth(req, res, next) {
+    return authenticate(req, res, next, false);
+}
+
+function optionalAuth(req, res, next) {
+    return authenticate(req, res, next, true);
+}
+
+module.exports = { requireAuth, optionalAuth };
