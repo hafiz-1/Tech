@@ -195,7 +195,10 @@ function PurchaseOrdersPage() {
   const updateReceipt = (itemId: number, key: keyof ReceiptInput, value: string) => {
     setReceiptInputs((current) => ({
       ...current,
-      [itemId]: { quantity: "", batchReference: "", ...current[itemId], [key]: value },
+      [itemId]: {
+        ...(current[itemId] ?? { quantity: "", batchReference: "" }),
+        [key]: value,
+      },
     }));
   };
   const receiptItems = (receivingOrder?.items ?? []).flatMap((item) => {
