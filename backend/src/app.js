@@ -13,16 +13,18 @@ const shippingRoutes = require("./routes/shipping.routes");
 const app = express();
 app.use(requestLogger);
 
-// const allowedOrigins = (process.env.APP_ORIGIN || "http://localhost:8080,http://127.0.0.1:8080")
-//     .split(",")
-//     .map((origin) => origin.trim())
-//     .filter(Boolean);
+// A wildcard origin is rejected by the browser when the request is sent with
+// credentials ("include"), which silently blocks every POST/PATCH/DELETE.
+// An explicit origin list plus credentials is required.
+const allowedOrigins = (process.env.APP_ORIGIN || "http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081,http://127.0.0.1:8081")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-//     app.use(cors({
-//         origin: allowedOrigins,
-//         credentials: true
-//     }));
-app.use(cors());    
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
 app.use(helmet());
 app.use(cookieParser());
 app.use(express.json({ limit: "10kb" }));

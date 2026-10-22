@@ -1,6 +1,14 @@
 
-const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
+
+let PrismaClient;
+try {
+    ({ PrismaClient } = require("@prisma/client"));
+} catch {
+    throw new Error(
+        "Prisma Client is not generated. Run `npx prisma generate` in the backend folder, then restart the server."
+    );
+}
 
 const connectionString = process.env.DATABASE_URL;
 

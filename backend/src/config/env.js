@@ -1,6 +1,7 @@
 
 const requiredVariables = [
-    "DATABASE_URL"
+    "DATABASE_URL",
+    "JWT_SECRET"
 ];
 
 function validateEnv() {

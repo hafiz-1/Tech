@@ -52,8 +52,8 @@ async function register(req, res, next) {
             });
         }
 
-        const user = await registerCustomer;
-            console.log("User registered:");
+        const user = await registerCustomer({ name, email, phone, password });
+        console.log("User registered:", { id: user.id, email: user.email });
         return res.status(201).json({
             success: true,
             message: "Account created. Please verify your email.",
