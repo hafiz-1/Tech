@@ -25,6 +25,7 @@ const cookieOptions = {
 async function register(req, res, next) {
     try {
         const { name, email, phone, password, confirmPassword } = req.body || {};
+        console.log("Registration request received:", { name, email, phone });
 
         // Ensure all required fields are strings
         if (![name, email, phone, password, confirmPassword].every(
@@ -51,7 +52,7 @@ async function register(req, res, next) {
             });
         }
 
-        const user = await registerCustomer({ name, email, phone, password });
+        const user = await registerCustomer;
             console.log("User registered:");
         return res.status(201).json({
             success: true,

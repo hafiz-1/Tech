@@ -1,4 +1,5 @@
 const express = require("express");
+
 const {
     register, verifyEmail, resendOtp, login, logout, refresh
 } = require("../controllers/auth.controller");

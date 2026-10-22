@@ -9,7 +9,7 @@ async function registerCustomer({ name, email, phone, password }) {
 
     // Generate a cryptographically secure 6-digit OTP.
     const otp = crypto.randomInt(100000, 1000000).toString();
-
+    console.log("Generated OTP for email verification:", otp);
     // Store only the hash, never the actual OTP.
     const tokenHash = crypto
         .createHash("sha256")
@@ -71,6 +71,7 @@ async function registerCustomer({ name, email, phone, password }) {
     // Send the OTP only after the account and token are saved.
     try {
         await sendVerificationEmail(user.email, otp);
+        console.log("Verification email sent to:", user.email);
     } catch (error) {
         console.error(
             "Verification email could not be sent:",
