@@ -5,7 +5,8 @@ const categorySelect = {
     name: true,
     description: true,
     createdAt: true,
-    updatedAt: true
+    updatedAt: true,
+    _count: { select: { products: { where: { deletedAt: null } } } }
 };
 
 const brandSelect = { ...categorySelect };

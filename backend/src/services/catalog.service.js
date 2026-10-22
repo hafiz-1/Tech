@@ -67,12 +67,17 @@ function publicProduct(product) {
     };
 }
 
+function withProductCount(record) {
+    const { _count, ...rest } = record;
+    return { ...rest, productCount: _count?.products ?? 0 };
+}
+
 async function listCategories() {
-    return queries.getCategories();
+    return (await queries.getCategories()).map(withProductCount);
 }
 
 async function listBrands() {
-    return queries.getBrands();
+    return (await queries.getBrands()).map(withProductCount);
 }
 
 async function listProducts(filters) {

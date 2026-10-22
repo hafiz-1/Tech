@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/store/AuthShell";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_store/account/register")({
@@ -55,43 +56,59 @@ function RegisterPage() {
   };
 
   return (
-    <Card className="mx-auto max-w-md">
-      <CardContent className="space-y-4 p-6">
-        <h1 className="text-xl font-bold">Create your account</h1>
-        {error ? (
-          <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="name">Full name</Label>
-            <Input id="name" autoComplete="name" required value={form.name} onChange={set("name")} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={form.email}
-              onChange={set("email")}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              required
-              placeholder="+923001234567"
-              value={form.phone}
-              onChange={set("phone")}
-            />
-          </div>
-          <div className="space-y-1">
+    <AuthShell
+      eyebrow="Get started"
+      title="Create your account"
+      subtitle="Verify your email once and you're ready to shop."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Already registered?{" "}
+          <Link to="/account/login" className="font-medium text-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
+      }
+    >
+      {error ? (
+        <div
+          className="mb-5 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{error}</span>
+        </div>
+      ) : null}
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Full name</Label>
+          <Input id="name" autoComplete="name" required value={form.name} onChange={set("name")} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={set("email")}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            type="tel"
+            autoComplete="tel"
+            required
+            placeholder="+923001234567"
+            value={form.phone}
+            onChange={set("phone")}
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
@@ -102,7 +119,7 @@ function RegisterPage() {
               onChange={set("password")}
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor="confirmPassword">Confirm password</Label>
             <Input
               id="confirmPassword"
@@ -113,17 +130,12 @@ function RegisterPage() {
               onChange={set("confirmPassword")}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Creating account…" : "Register"}
-          </Button>
-        </form>
-        <p className="text-center text-sm text-muted-foreground">
-          Already registered?{" "}
-          <Link to="/account/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? "Creating account…" : "Create account"}
+          {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden /> : null}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/store/AuthShell";
 import { isAdminRole, useAuth } from "@/lib/auth";
 
 type LoginSearch = { redirect?: string };
@@ -60,48 +61,57 @@ function LoginPage() {
   };
 
   return (
-    <Card className="mx-auto max-w-md">
-      <CardContent className="space-y-4 p-6">
-        <h1 className="text-xl font-bold">Sign in</h1>
-        {error ? (
-          <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Signing in…" : "Sign in"}
-          </Button>
-        </form>
+    <AuthShell
+      eyebrow="Account"
+      title="Welcome back"
+      subtitle="Sign in to manage your cart, orders and delivery details."
+      footer={
         <p className="text-center text-sm text-muted-foreground">
-          No account?{" "}
+          New to TechCart?{" "}
           <Link to="/account/register" className="font-medium text-primary hover:underline">
-            Register
+            Create an account
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      }
+    >
+      {error ? (
+        <div
+          className="mb-5 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{error}</span>
+        </div>
+      ) : null}
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? "Signing in…" : "Sign in"}
+          {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden /> : null}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

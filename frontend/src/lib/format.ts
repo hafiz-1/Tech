@@ -8,12 +8,12 @@ const pkr = new Intl.NumberFormat("en-PK", {
 
 /** Shared PKR price formatter. Always display API-provided totals as-is. */
 export function formatPKR(amount: number | null | undefined): string {
-  if (amount == null || Number.isNaN(amount)) return "—";
+  if (amount == null || Number.isNaN(amount)) return "\u2014";
   return pkr.format(amount);
 }
 
 /**
- * Public pages may only say "Available" or "Out of Stock" — never numeric
+ * Public pages may only say "Available" or "Out of Stock" - never numeric
  * stock, reserved, or on-hand quantities.
  */
 export function availabilityLabel(source: Product | ProductVariant | null | undefined): string {
@@ -44,9 +44,9 @@ export function displayPrice(product: Product): number | null {
 }
 
 export function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
+  if (!value) return "\u2014";
   const d = new Date(value);
   return Number.isNaN(d.getTime())
-    ? "—"
+    ? "\u2014"
     : d.toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" });
 }

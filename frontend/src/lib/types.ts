@@ -25,12 +25,14 @@ export interface Category {
   id: number;
   name: string;
   description?: string | null;
+  productCount?: number;
 }
 
 export interface Brand {
   id: number;
   name: string;
   description?: string | null;
+  productCount?: number;
 }
 
 export interface ProductVariant {

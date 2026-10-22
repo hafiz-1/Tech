@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/store/AuthShell";
 import { useAuth } from "@/lib/auth";
 
 const RESEND_COUNTDOWN_SECONDS = 60;
@@ -82,65 +83,82 @@ function VerifyPage() {
   };
 
   return (
-    <Card className="mx-auto max-w-md">
-      <CardContent className="space-y-4 p-6">
-        <h1 className="text-xl font-bold">Verify your email</h1>
-        <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code we sent to your email address.
-        </p>
-        {error ? (
-          <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {notice ? (
-          <p className="rounded-md bg-primary/10 p-3 text-sm text-primary" role="status">
-            {notice}
-          </p>
-        ) : null}
-        <form onSubmit={onVerify} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="otp">Verification code</Label>
-            <Input
-              id="otp"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              placeholder="000000"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Verifying…" : "Verify"}
-          </Button>
-        </form>
-        <div className="flex items-center justify-between text-sm">
-          <Button
-            variant="link"
-            className="px-0"
-            disabled={resending || countdown > 0 || !email}
-            onClick={onResend}
-          >
-            {countdown > 0 ? `Resend code in ${countdown}s` : resending ? "Sending…" : "Resend code"}
-          </Button>
-          <Link to="/account/login" className="text-primary hover:underline">
-            Back to sign in
+    <AuthShell
+      eyebrow="Almost there"
+      title="Verify your email"
+      subtitle="Enter the 6-digit code we sent to your inbox to activate your account."
+      footer={
+        <p className="text-center text-sm text-muted-foreground">
+          Wrong email?{" "}
+          <Link to="/account/register" className="font-medium text-primary hover:underline">
+            Register again
           </Link>
+        </p>
+      }
+    >
+      {error ? (
+        <div
+          className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{error}</span>
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+      {notice ? (
+        <div
+          className="mb-4 flex items-start gap-2 rounded-xl border border-success/20 bg-success/5 p-3 text-sm text-success"
+          role="status"
+        >
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{notice}</span>
+        </div>
+      ) : null}
+
+      <form onSubmit={onVerify} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="otp">Verification code</Label>
+          <Input
+            id="otp"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            required
+            placeholder="000000"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            className="h-12 text-center font-display text-xl tracking-[0.5em]"
+          />
+        </div>
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? "Verifying…" : "Verify email"}
+        </Button>
+      </form>
+
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <Button
+          variant="link"
+          className="h-auto px-0"
+          disabled={resending || countdown > 0 || !email}
+          onClick={onResend}
+        >
+          {countdown > 0 ? `Resend in ${countdown}s` : resending ? "Sending…" : "Resend code"}
+        </Button>
+        <Link to="/account/login" className="font-medium text-primary hover:underline">
+          Back to sign in
+        </Link>
+      </div>
+    </AuthShell>
   );
 }

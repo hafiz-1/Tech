@@ -1,9 +1,10 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthShell } from "@/components/store/AuthShell";
 import { isAdminRole, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/admin_/login")({
@@ -47,22 +48,35 @@ function AdminLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted px-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="space-y-4 p-6">
-          <div>
-            <h1 className="text-xl font-bold">
-              Tech<span className="text-primary">Cart</span> Admin
-            </h1>
-            <p className="text-sm text-muted-foreground">Sign in with an admin account.</p>
-          </div>
-          {error ? (
-            <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive" role="alert">
-              {error}
+    <div className="min-h-screen bg-background px-4 py-10 sm:px-6 lg:py-16">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
+          Secure admin portal
+        </div>
+        <AuthShell
+          eyebrow="Admin"
+          title="Sign in to the console"
+          subtitle="Manage catalog, inventory, suppliers and orders."
+          footer={
+            <p className="text-center text-sm text-muted-foreground">
+              <a href="/" className="font-medium text-primary hover:underline">
+                Back to storefront
+              </a>
             </p>
+          }
+        >
+          {error ? (
+            <div
+              className="mb-5 flex items-start gap-2 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>{error}</span>
+            </div>
           ) : null}
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-1">
+          <form onSubmit={onSubmit} className="space-y-5">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -73,7 +87,7 @@ function AdminLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
@@ -84,17 +98,13 @@ function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Signing in…" : "Sign in"}
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? "Signing in…" : "Sign in to console"}
+              {!submitting ? <ArrowRight className="h-4 w-4" aria-hidden /> : null}
             </Button>
           </form>
-          <p className="text-center text-sm text-muted-foreground">
-            <Link to="/" className="text-primary hover:underline">
-              Back to storefront
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+        </AuthShell>
+      </div>
     </div>
   );
 }
